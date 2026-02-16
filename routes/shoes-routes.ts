@@ -5,12 +5,14 @@ const testShoe = {
   id: 1,
   name: 'test shoe',
   archived: false,
+  createdAt: new Date().toISOString(),
 };
 
 const ShoesRecordSchema = Type.Object({
   id: Type.Number(),
   name: Type.String(),
   archived: Type.Boolean(),
+  createdAt: Type.String({ format: 'date-time' }),
 });
 
 const ShoesCreateSchema = Type.Object({

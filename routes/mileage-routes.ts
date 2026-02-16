@@ -5,13 +5,13 @@ const testMileage = {
   id: 1,
   shoeId: 123,
   miles: 1.0,
-  date: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
 };
 
 const MileageBaseSchema = Type.Object({
   shoeId: Type.Number(),
   miles: Type.Number(),
-  date: Type.String({ format: 'date-time' }),
+  createdAt: Type.String({ format: 'date-time' }),
 });
 
 export const MileageCreateSchema = MileageBaseSchema;
