@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS shoes (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  archived BOOLEAN NOT NULL,
+  createdAt DATE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mileages (
+  id SERIAL,
+  shoesId INTEGER NOT NULL,
+  miles DECIMAL NOT NULL,
+  createdAt DATE NOT NULL,
+  PRIMARY KEY (id, shoesId),
+  FOREIGN KEY (shoesId) REFERENCES shoes(id) ON DELETE CASCADE
+);
