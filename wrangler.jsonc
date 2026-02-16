@@ -1,5 +1,5 @@
 {
-  "name": "worker-name",
+  "name": "shoe-mileage-tracker-api",
   "compatibility_date": "2026-02-16",
   "assets": {
     "directory": "./dist"
