@@ -23,6 +23,7 @@ npm-debug*.log*
 .env.test.local
 .env.production.local
 config/*.env
+.wrangler
 
 # IDE-specific files (optional)
 .vscode/
