@@ -53,30 +53,19 @@ mileageRoutes.get('/', async (c) => {
 });
 
 // CREATE mileage entry
-mileageRoutes.post(
-  '/',
-  zValidator(
-    'json',
-    z.object({
-      shoeId: z.number(),
-      miles: z.number(),
-      createdAt: z.string(),
-    })
-  ),
-  async (c) => {
-    const { shoeId, miles, createdAt } = c.req.valid('json');
+mileageRoutes.post('/', zValidator('json', MileageBaseSchema), async (c) => {
+  const { shoeId, miles, createdAt } = c.req.valid('json');
 
-    const row = await c.env.DATABASE.prepare(
-      `INSERT INTO mileages (shoeId, miles, createdAt)
+  const row = await c.env.DATABASE.prepare(
+    `INSERT INTO mileages (shoeId, miles, createdAt)
          VALUES (?, ?, ?)
          RETURNING *`
-    )
-      .bind(shoeId, miles, createdAt)
-      .first();
+  )
+    .bind(shoeId, miles, createdAt)
+    .first();
 
-    return c.json(MileageRecordSchema.parse(mapRow(row)), 201);
-  }
-);
+  return c.json(MileageRecordSchema.parse(mapRow(row)), 201);
+});
 
 // UPDATE mileage entry
 mileageRoutes.put('/', zValidator('json', MileageRecordSchema), async (c) => {

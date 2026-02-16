@@ -2,14 +2,22 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
+type Env = {
+  Bindings: {
+    DATABASE: D1Database;
+  };
+};
+
+const shoesRoutes = new Hono<Env>();
+
+/* -----------------------------
+   Schemas
+------------------------------ */
+
 const ShoesBaseSchema = z.object({
   id: z.number(),
   name: z.string(),
   archived: z.boolean(),
-});
-
-const ShoesRecordSchema = ShoesBaseSchema.extend({
-  createdAt: z.iso.datetime(),
 });
 
 const ShoesCreateSchema = z.object({
@@ -20,11 +28,9 @@ const ShoesDeleteParamsSchema = z.object({
   id: z.coerce.number(),
 });
 
-const ShoesDeleteResponseSchema = z.object({
-  status: z.boolean(),
-});
-
-const shoesRoutes = new Hono<Env>();
+/* -----------------------------
+   Routes
+------------------------------ */
 
 shoesRoutes.get('/', async (c) => {
   const { results } = await c.env.DATABASE.prepare('SELECT * FROM shoes').all();
