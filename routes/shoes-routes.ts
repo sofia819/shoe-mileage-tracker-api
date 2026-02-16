@@ -2,13 +2,6 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
-const testShoe = {
-  id: 1,
-  name: 'test shoe',
-  archived: false,
-  createdAt: new Date().toISOString(),
-};
-
 const ShoesBaseSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -31,30 +24,38 @@ const ShoesDeleteResponseSchema = z.object({
   status: z.boolean(),
 });
 
-const shoesRoutes = new Hono();
+const shoesRoutes = new Hono<Env>();
 
-shoesRoutes.get('/', (c) => {
-  console.log('Listing all shoes');
+shoesRoutes.get('/', async (c) => {
+  const { results } = await c.env.DATABASE.prepare('SELECT * FROM shoes').all();
 
-  const response = z.array(ShoesRecordSchema).parse([testShoe]);
-
-  return c.json(response, 200);
+  return c.json(results, 200);
 });
 
-shoesRoutes.post('/', zValidator('json', ShoesCreateSchema), (c) => {
+shoesRoutes.post('/', zValidator('json', ShoesCreateSchema), async (c) => {
   const body = c.req.valid('json');
 
-  console.log(`Received request to create shoe`, body);
+  const result = await c.env.DATABASE.prepare(
+    `INSERT INTO shoes (name, archived, createdAt)
+         VALUES (?, ?, ?)
+         RETURNING *`
+  )
+    .bind(body.name, false, new Date().toISOString())
+    .first();
 
-  const response = ShoesRecordSchema.parse(testShoe);
-
-  return c.json(response, 200);
+  return c.json(result, 201);
 });
 
-shoesRoutes.put('/', zValidator('json', ShoesBaseSchema), (c) => {
+shoesRoutes.put('/', zValidator('json', ShoesBaseSchema), async (c) => {
   const body = c.req.valid('json');
 
-  console.log(`Received request to update shoe`, body);
+  await c.env.DATABASE.prepare(
+    `UPDATE shoes
+         SET name = ?, archived = ?
+         WHERE id = ?`
+  )
+    .bind(body.name, body.archived, body.id)
+    .run();
 
   return c.json(body, 200);
 });
@@ -62,14 +63,14 @@ shoesRoutes.put('/', zValidator('json', ShoesBaseSchema), (c) => {
 shoesRoutes.delete(
   '/:id',
   zValidator('param', ShoesDeleteParamsSchema),
-  (c) => {
+  async (c) => {
     const { id } = c.req.valid('param');
 
-    console.log(`Deleting shoe ID ${id}`);
+    await c.env.DATABASE.prepare('DELETE FROM shoes WHERE id = ?')
+      .bind(id)
+      .run();
 
-    const response = ShoesDeleteResponseSchema.parse({ status: true });
-
-    return c.json(response, 200);
+    return c.json({ status: true }, 200);
   }
 );
 

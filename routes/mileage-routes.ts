@@ -2,87 +2,108 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
-const mileageRoutes = new Hono();
-
-const testMileage = {
-  id: 1,
-  shoeId: 123,
-  miles: 1.0,
-  createdAt: new Date().toISOString(),
+type Env = {
+  Bindings: {
+    DATABASE: D1Database;
+  };
 };
 
-/**
- * Schemas (Zod equivalents of your TypeBox schemas)
- */
+const mileageRoutes = new Hono<Env>();
 
-// Base schema
+/* -----------------------------
+   Schemas
+------------------------------ */
+
 const MileageBaseSchema = z.object({
   shoeId: z.number(),
   miles: z.number(),
-  createdAt: z.iso.datetime(),
+  createdAt: z.string(), // ISO string
 });
 
-// Record schema
-export const MileageRecordSchema = MileageBaseSchema.extend({
+const MileageRecordSchema = MileageBaseSchema.extend({
   id: z.number(),
 });
 
-// Delete params
 const MileageDeleteParamsSchema = z.object({
   id: z.coerce.number(),
 });
 
-// Delete response
-const MileageDeleteResponseSchema = z.object({
-  status: z.boolean(),
+/* -----------------------------
+   Helpers
+------------------------------ */
+
+const mapRow = (row: any) => ({
+  ...row,
+  miles: Number(row.miles),
 });
 
-/**
- * Routes
- */
+/* -----------------------------
+   Routes
+------------------------------ */
 
-mileageRoutes.get('/', (c) => {
-  console.log('Listing all mileages');
+// GET all mileage entries
+mileageRoutes.get('/', async (c) => {
+  const { results } = await c.env.DATABASE.prepare(
+    'SELECT * FROM mileages ORDER BY createdAt DESC'
+  ).all();
 
-  const response = z.array(MileageRecordSchema).parse([testMileage]);
+  const mileages = (results ?? []).map(mapRow);
 
-  return c.json(response, 200);
+  return c.json(z.array(MileageRecordSchema).parse(mileages));
 });
 
-mileageRoutes.post('/', zValidator('json', MileageBaseSchema), (c) => {
-  const body = c.req.valid('json');
+// CREATE mileage entry
+mileageRoutes.post(
+  '/',
+  zValidator(
+    'json',
+    z.object({
+      shoeId: z.number(),
+      miles: z.number(),
+    })
+  ),
+  async (c) => {
+    const { shoeId, miles } = c.req.valid('json');
 
-  console.log('Received request to create mileage', body);
+    const row = await c.env.DATABASE.prepare(
+      `INSERT INTO mileages (shoesId, miles, createdAt)
+         VALUES (?, ?, ?)
+         RETURNING *`
+    )
+      .bind(shoeId, miles, new Date().toISOString())
+      .first();
 
-  const response = MileageRecordSchema.parse({
-    id: 1,
-    ...body,
-  });
+    return c.json(MileageRecordSchema.parse(mapRow(row)), 201);
+  }
+);
 
-  return c.json(response, 200);
+// UPDATE mileage entry
+mileageRoutes.put('/', zValidator('json', MileageRecordSchema), async (c) => {
+  const { id, shoeId, miles, createdAt } = c.req.valid('json');
+
+  await c.env.DATABASE.prepare(
+    `UPDATE mileages
+         SET shoesId = ?, miles = ?, createdAt = ?
+         WHERE id = ?`
+  )
+    .bind(shoeId, miles, createdAt, id)
+    .run();
+
+  return c.json({ success: true });
 });
 
-mileageRoutes.put('/', zValidator('json', MileageRecordSchema), (c) => {
-  const body = c.req.valid('json');
-
-  console.log('Received request to update mileage', body);
-
-  return c.json(body, 200);
-});
-
+// DELETE mileage entry
 mileageRoutes.delete(
   '/:id',
   zValidator('param', MileageDeleteParamsSchema),
-  (c) => {
+  async (c) => {
     const { id } = c.req.valid('param');
 
-    console.log(`Deleting mileage ID ${id}`);
+    await c.env.DATABASE.prepare('DELETE FROM mileages WHERE id = ?')
+      .bind(id)
+      .run();
 
-    const response = MileageDeleteResponseSchema.parse({
-      status: true,
-    });
-
-    return c.json(response, 200);
+    return c.json({ success: true });
   }
 );
 
