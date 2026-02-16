@@ -60,17 +60,18 @@ mileageRoutes.post(
     z.object({
       shoeId: z.number(),
       miles: z.number(),
+      createdAt: z.string(),
     })
   ),
   async (c) => {
-    const { shoeId, miles } = c.req.valid('json');
+    const { shoeId, miles, createdAt } = c.req.valid('json');
 
     const row = await c.env.DATABASE.prepare(
-      `INSERT INTO mileages (shoesId, miles, createdAt)
+      `INSERT INTO mileages (shoeId, miles, createdAt)
          VALUES (?, ?, ?)
          RETURNING *`
     )
-      .bind(shoeId, miles, new Date().toISOString())
+      .bind(shoeId, miles, createdAt)
       .first();
 
     return c.json(MileageRecordSchema.parse(mapRow(row)), 201);
@@ -83,7 +84,7 @@ mileageRoutes.put('/', zValidator('json', MileageRecordSchema), async (c) => {
 
   await c.env.DATABASE.prepare(
     `UPDATE mileages
-         SET shoesId = ?, miles = ?, createdAt = ?
+         SET shoeId = ?, miles = ?, createdAt = ?
          WHERE id = ?`
   )
     .bind(shoeId, miles, createdAt, id)

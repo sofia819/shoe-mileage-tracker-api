@@ -1,6 +1,7 @@
 ```txt
 npm install
-npm run dev
+npx wrangler d1 execute shoe-mileage-tracker --local --file=./schema.sql
+npx wrangler dev
 ```
 
 ```txt
@@ -17,5 +18,5 @@ Pass the `CloudflareBindings` as generics when instantiation `Hono`:
 
 ```ts
 // src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
+const app = new Hono<{ Bindings: CloudflareBindings }>();
 ```
